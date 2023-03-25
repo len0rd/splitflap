@@ -282,8 +282,10 @@ void SplitflapTask::runUpdate() {
 }
 
 int8_t SplitflapTask::findFlapIndex(uint8_t character) {
+    // ensure all letters are lowercases
+    uint8_t sanitized_char = std::isalpha(character) ? static_cast<uint8_t>(std::tolower(character)) : character;
     for (int8_t i = 0; i < NUM_FLAPS; i++) {
-        if (character == flaps[i]) {
+        if (sanitized_char == flaps[i]) {
           return i;
         }
     }
@@ -320,8 +322,10 @@ void SplitflapTask::log(const char* msg) {
 void SplitflapTask::showString(const char* str, uint8_t length, bool force_full_rotation) {
     Command command = {};
     command.command_type = CommandType::MODULES;
-    for (uint8_t i = 0; i < length; i++) {
-        int8_t index = findFlapIndex(str[i]);
+    for (uint8_t i = 0; i < NUM_MODULES; i++) {
+        // if str isnt as long as NUM_MODULES, pad with spaces
+        // TODO: support grid display and padding before newlines
+        int8_t index = i < length ? findFlapIndex(str[i]) : findFlapIndex(' ');
         if (index != -1) {
             if (force_full_rotation || index != modules[i]->GetTargetFlapIndex()) {
                 command.data.module_command[i] = QCMD_FLAP + index;
