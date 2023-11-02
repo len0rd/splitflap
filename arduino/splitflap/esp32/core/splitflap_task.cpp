@@ -319,16 +319,95 @@ void SplitflapTask::log(const char* msg) {
     }
 }
 
-void SplitflapTask::showString(const char* str, uint8_t length, bool force_full_rotation) {
+void SplitflapTask::showString(const char *str, uint8_t length, bool force_full_rotation)
+{
+    size_t currentRow = 0;
+    size_t currentCol = 0;
+    // wipe display to spaces
+    for (size_t ii = 0; ii < DISPLAY_NUM_ROWS; ii++)
+    {
+        for (size_t jj = 0; jj < DISPLAY_NUM_COLS; jj++)
+        {
+            m_display[ii][jj] = ' ';
+        }
+    }
+
+    if (length > 256)
+    {
+        log("String is too long!\n");
+    }
+    else
+    {
+        char buffer[256] = {};
+        memcpy(buffer, str, length);
+        log("Raw in::\n");
+        log(buffer);
+    }
+
+    // convert into display matrix
+    for (size_t ii = 0; ii < length; ii++)
+    {
+        // check for new row conditions:
+        //  - \n character
+        //  - run out of columns
+        if (str[ii] == '\\' && (ii + 1) < length)
+        {
+            ii++;
+            if (str[ii] == 'n')
+            {
+                // `\n` character. escape.
+                currentRow++;
+                currentCol = 0;
+                continue;
+            }
+        }
+        else if (currentCol >= DISPLAY_NUM_COLS)
+        {
+            currentRow++;
+            currentCol = 0;
+        }
+
+        // check for end of display condition
+        if (currentRow >= DISPLAY_NUM_ROWS)
+        {
+            break;
+        }
+
+        // insert next character:
+        m_display[currentRow][currentCol++] = str[ii];
+    }
+
+    for (size_t ii = 0; ii < DISPLAY_NUM_ROWS; ii++)
+    {
+        if (m_rowTransforms[ii] < 0)
+        {
+            // when < 0, perform an in-place reverse
+            for (size_t jj = 0; jj < DISPLAY_NUM_COLS / 2; jj++)
+            {
+                char temp = m_display[ii][jj];
+                m_display[ii][jj] = m_display[ii][DISPLAY_NUM_COLS - 1 - jj];
+                m_display[ii][DISPLAY_NUM_COLS - 1 - jj] = temp;
+            }
+        }
+    }
+
+    // compose display matrix into command string
     Command command = {};
     command.command_type = CommandType::MODULES;
-    for (uint8_t i = 0; i < NUM_MODULES; i++) {
-        // if str isnt as long as NUM_MODULES, pad with spaces
-        // TODO: support grid display and padding before newlines
-        int8_t index = i < length ? findFlapIndex(str[i]) : findFlapIndex(' ');
-        if (index != -1) {
-            if (force_full_rotation || index != modules[i]->GetTargetFlapIndex()) {
-                command.data.module_command[i] = QCMD_FLAP + index;
+    for (size_t ii = 0; ii < DISPLAY_NUM_ROWS; ii++)
+    {
+        for (size_t jj = 0; jj < DISPLAY_NUM_COLS; jj++)
+        {
+            size_t moduleIdx = (ii * DISPLAY_NUM_COLS) + jj;
+
+            int8_t index = findFlapIndex(m_display[ii][jj]);
+            if (index < 0)
+            {
+                index = findFlapIndex(' ');
+            }
+            if (force_full_rotation || index != modules[moduleIdx]->GetTargetFlapIndex())
+            {
+                command.data.module_command[moduleIdx] = QCMD_FLAP + index;
             }
         }
     }

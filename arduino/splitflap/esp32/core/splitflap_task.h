@@ -119,7 +119,7 @@ class SplitflapTask : public Task<SplitflapTask> {
     public:
         SplitflapTask(const uint8_t task_core, const LedMode led_mode);
         ~SplitflapTask();
-        
+
         SplitflapState getState();
 
         void showString(const char *str, uint8_t length, bool force_full_rotation = FORCE_FULL_ROTATION);
@@ -163,4 +163,10 @@ class SplitflapTask : public Task<SplitflapTask> {
         void log(const char* msg);
 
         int8_t findFlapIndex(uint8_t character);
+
+        static constexpr size_t DISPLAY_NUM_ROWS = 3;
+        static constexpr size_t DISPLAY_NUM_COLS = 12;
+        /// @brief  display is 3 rows of 12
+        char m_display[DISPLAY_NUM_ROWS][DISPLAY_NUM_COLS] = {};
+        const int m_rowTransforms[DISPLAY_NUM_ROWS] = {1, -1, 1};
 };
